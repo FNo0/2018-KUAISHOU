@@ -27,3 +27,6 @@ train3:用户1-23，历史信息15-23，标签24-30；
 test:用户1-30，历史信息22-30。
 
 两套方案特征相同。
+
+另一队友的方案：
+https://github.com/YangKing0834131/2018-KUAISHOU-TSINGHUA-Top28-Solutions-
