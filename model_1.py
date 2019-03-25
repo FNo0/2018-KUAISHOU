@@ -333,6 +333,52 @@ def get_activity_feat(activity,feat_dates):
         feature[fur + '_to_label'] = feature[fur].map(lambda x : feat_dates[-1] + 1 - x)
         feature.drop([near,fur],axis = 1,inplace = True)
         
+    ## 关联度
+    # 用户发布的视频总浏览数
+    authors = pd.pivot_table(history,index = ['author_id'],values = 'user_id',aggfunc = len)
+    authors.rename(columns = {'user_id' : 'author_cnt'},inplace = True)
+    authors.reset_index(inplace = True)
+    # 用户每个视频被浏览数
+    videos = pd.pivot_table(history,index = ['author_id','video_id'],values = 'user_id',aggfunc = len)
+    videos.rename(columns = {'user_id' : 'video_cnt'},inplace = True)
+    videos.reset_index(inplace = True)
+    # 合
+    authors_videos = pd.merge(authors,videos,on = 'author_id',how = 'right')
+    authors_videos['rate'] = authors_videos['video_cnt'] / authors_videos['author_cnt']
+    authors_videos = authors_videos[['author_id','video_id','rate']]
+    # 用户活动次数
+    users = pd.pivot_table(history,index = ['user_id','video_id'],values = 'cnt',aggfunc = len)
+    users.rename(columns = {'cnt' : 'user_cnt'},inplace = True)
+    users.reset_index(inplace = True)
+    # 合
+    users_authors_videos = pd.merge(users,authors_videos,on = ['video_id'],how = 'left')
+    # user-video关联度
+    users_authors_videos['similar'] = users_authors_videos['rate'] * users_authors_videos['user_cnt']
+    # user-author关联度
+    users_authors_videos = pd.pivot_table(users_authors_videos,index = ['user_id','author_id'],values = 'similar',aggfunc = sum)
+    users_authors_videos.reset_index(inplace = True)
+    # 均值
+    mean = pd.pivot_table(users_authors_videos,index = ['user_id'],values = 'similar',aggfunc = np.mean)
+    mean.rename(columns = {'similar' : 'similar_mean'},inplace = True)
+    mean.reset_index(inplace = True)
+    # 方差
+    var = pd.pivot_table(users_authors_videos,index = ['user_id'],values = 'similar',aggfunc = np.var)
+    var.rename(columns = {'similar' : 'similar_var'},inplace = True)
+    var.reset_index(inplace = True)
+    # 最大值
+    maxs = pd.pivot_table(users_authors_videos,index = ['user_id'],values = 'similar',aggfunc = max)
+    maxs.rename(columns = {'similar' : 'similar_max'},inplace = True)
+    maxs.reset_index(inplace = True)
+    # 最小值
+    mins = pd.pivot_table(users_authors_videos,index = ['user_id'],values = 'similar',aggfunc = min)
+    mins.rename(columns = {'similar' : 'similar_min'},inplace = True)
+    mins.reset_index(inplace = True)
+    ## 合并
+    feature = pd.merge(feature,mean,on = 'user_id',how = 'left')
+    feature = pd.merge(feature,var,on = 'user_id',how = 'left')
+    feature = pd.merge(feature,maxs,on = 'user_id',how = 'left')
+    feature = pd.merge(feature,mins,on = 'user_id',how = 'left')
+        
     ## 填空
     feature.fillna(0,downcast = 'infer',inplace = True)
     ## 返回
